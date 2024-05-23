@@ -1,0 +1,74 @@
+{#{% extends 'tests/base.html' %}#}
+{##}
+{#{% from 'pagination.html' import pagination %}#}
+{##}
+{#{% block test_content %}#}
+{#<h1>Просмотр результатов тестов</h1>#}
+{#<table class="table">#}
+{#    <thead>#}
+{#        <tr>#}
+{#            <th>№</th>#}
+{#            <th>Endpoint</th>#}
+{#            <th>Метод</th>#}
+{#            <th>Начало</th>#}
+{#            <th>Конец</th>#}
+{#            <th>Метрики</th>#}
+{#        </tr>#}
+{#    </thead>#}
+{#    <tbody>#}
+{#        {% for result in data %}#}
+{#        <tr>#}
+{#            <td>{{ loop.index }}</td>#}
+{#            <td>{{ result.endpoint }}</td>#}
+{#            <td>{{ result.method }}</td>#}
+{#            <td>{{ result.start_time }}</td>#}
+{#            <td>{{ result.end_time }}</td>#}
+{#            <td>{{ result.metrics }}</td>#}
+{#        </tr>#}
+{#        {% endfor %}#}
+{#    </tbody>#}
+{#</table>#}
+{#    {{ pagination(request.endpoint, page, page_count, pages) }}#}
+{##}
+{#{% endblock %}#}
+
+{% extends 'tests/base.html' %}
+
+{% from 'pagination.html' import pagination %}
+
+{% block test_content %}
+    <div class="table-responsive">
+        <h1>Просмотр результатов тестов</h1>
+        <table class="table">
+            <thead>
+            <tr>
+                <th>№</th>
+                <th>Endpoint</th>
+                <th>Метод</th>
+                <th>Начало</th>
+                <th>Среднее время</th>
+                <th>Макс. время</th>
+                <th>Мин. время</th>
+                <th>Общее время</th>
+                <th>Неудачные запросы</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for result in data %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ result.endpoint }}</td>
+                    <td>{{ result.method }}</td>
+                    <td>{{ result.start_time }}</td>
+                    <td>{{ result.metrics.avg_time }}</td>
+                    <td>{{ result.metrics.max_time }}</td>
+                    <td>{{ result.metrics.min_time }}</td>
+                    <td>{{ result.metrics.total_time }}</td>
+                    <td>{{ result.metrics.failed_requests }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {{ pagination(request.endpoint, page, page_count, pages) }}
+    </div>
+{% endblock %}

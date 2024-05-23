@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Создать новый тест</h1>
+{% from 'tests/test_form.html' import test_form %}
+{{ test_form('new') }}
+{% endblock %}

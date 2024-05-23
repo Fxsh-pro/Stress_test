@@ -1,0 +1,39 @@
+{% macro test_form(action, test_data={}) %}
+    <form method="post">
+        <div class="form-group">
+            <label for="endpoint">Endpoint</label>
+            <input type="text" class="form-control" id="endpoint" name="endpoint" value="{{ test_data.endpoint or '' }}"
+                   required>
+        </div>
+        <div class="form-group">
+            <label for="method">Метод</label>
+            <select class="form-control" id="method" name="method" required>
+                <option value="GET" {% if test_data.method == 'GET' %}selected{% endif %}>GET</option>
+                <option value="POST" {% if test_data.method == 'POST' %}selected{% endif %}>POST</option>
+                <option value="PUT" {% if test_data.method == 'PUT' %}selected{% endif %}>PUT</option>
+                <option value="DELETE" {% if test_data.method == 'DELETE' %}selected{% endif %}>DELETE</option>
+                <option value="PATCH" {% if test_data.method == 'PATCH' %}selected{% endif %}>PATCH</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="request_arguments">Аргументы</label>
+            <textarea class="form-control" id="request_arguments"
+                      name="request_arguments">{{ test_data.request_arguments or '' }}</textarea>
+        </div>
+        <div class="form-group">
+            <label for="request_body">Тело запроса</label>
+            <textarea class="form-control" id="request_body"
+                      name="request_body">{{ test_data.request_body or '' }}</textarea>
+        </div>
+        <div class="form-group">
+            <label for="count_of_tests">Количество тестов</label>
+            <input type="number" class="form-control" id="count_of_tests" name="count_of_tests"
+                   value="{{ test_data.count_of_tests or '' }}" required>
+        </div>
+        <div class="form-group">
+            <label for="headers">Заголовки</label>
+            <textarea class="form-control" id="headers" name="headers">{{ test_data.headers or '' }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+    </form>
+{% endmacro %}

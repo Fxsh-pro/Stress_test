@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Просмотр теста</h1>
+<table class="table">
+    <tbody>
+        <tr>
+            <td>endpoint</td>
+            <td>{{ test.endpoint }}</td>
+        </tr>
+        <tr>
+            <td>Метод</td>
+            <td>{{ test.method }}</td>
+        </tr>
+        <tr>
+            <td>Аргументы</td>
+            <td>{{ test.request_arguments }}</td>
+        </tr>
+        <tr>
+            <td>Тело запроса</td>
+            <td>{{ test.request_body }}</td>
+        </tr>
+        <tr>
+            <td>Количество тестов</td>
+            <td>{{ test.count_of_tests }}</td>
+        </tr>
+        <tr>
+            <td>Заголовки</td>
+            <td>{{ test.headers }}</td>
+        </tr>
+        <tr>
+            <td>Дата создания</td>
+            <td>{{ test.created_at }}</td>
+        </tr>
+    </tbody>
+</table>
+{% endblock %}
