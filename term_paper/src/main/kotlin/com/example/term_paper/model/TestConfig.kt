@@ -10,6 +10,7 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.TemporalType
 import lombok.ToString
 import java.util.Date
+import kotlin.reflect.jvm.internal.impl.builtins.functions.FunctionInvokeDescriptor.Factory
 
 @Entity
 @Table(name = "test_configs")
@@ -38,14 +39,15 @@ class TestConfig {
     @Column(name = "headers", columnDefinition = "text")
     var headers: String? = null
 
-    // @ManyToOne(fetch = FetchType.LAZY)
-    // @JoinColumn(name = "user_id", nullable = false)
     @Column(name = "user_id")
     var user_id: Int? = null
 
     @Column(name = "created_at", columnDefinition = "datetime default CURRENT_TIMESTAMP", nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
     var createdAt: Date = Date()
+
+    @Column(name = "was_tested")
+    var wasTested: Int = 0
 
     override fun toString(): String {
         return "TestConfig(id=$id, endpoint='$endpoint', method=$method, user_id=$user_id)"

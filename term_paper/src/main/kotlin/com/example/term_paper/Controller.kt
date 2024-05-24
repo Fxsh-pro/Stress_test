@@ -1,19 +1,21 @@
 package com.example.term_paper
 
 import com.example.term_paper.model.HttpMethod
+import com.example.term_paper.model.StressTestResult
 import com.example.term_paper.model.TestConfig
-import com.example.term_paper.repository.TestConfigsRepository
+import com.example.term_paper.model.TestResult
+import com.example.term_paper.service.TestConfigService
+import com.example.term_paper.service.TestResultService
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import jakarta.transaction.Transactional
 import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.future.await
 import kotlinx.coroutines.launch
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -27,95 +29,50 @@ import java.time.Instant
 import java.util.Collections
 import java.util.concurrent.Executors
 import java.util.concurrent.Flow
-import java.util.concurrent.atomic.AtomicInteger
-import kotlin.system.exitProcess
 
 @Component
-class Controller(var rep: TestConfigsRepository) {
+class Controller(
+    var testConfigService: TestConfigService,
+    var testResultService: TestResultService
+) {
 
     val httpClient = HttpClient.newHttpClient()
     val threadPool = Executors.newFixedThreadPool(10).asCoroutineDispatcher()
-    // @Scheduled(fixedRate = 10000000)
-    // fun printHello() {
-    //     val res = rep.findAll()
-    //     res.filter { it.endpoint.contains("user_actions") }
-    //         .forEach {
-    //             println(it.toString())
-    //             val url = URI.create(it.endpoint)
-    //
-    //             val httpRequest = when (it.method) {
-    //                 HttpMethod.GET -> HttpRequest.newBuilder(url)
-    //                     .GET()
-    //                     .build()
-    //
-    //                 HttpMethod.POST -> {
-    //                     val requestBody = it.requestBody ?: ""
-    //                     HttpRequest.newBuilder(url)
-    //                         .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-    //                         .build()
-    //                 }
-    //                 HttpMethod.PUT -> {
-    //                     val requestBody = it.requestBody ?: ""
-    //                     HttpRequest.newBuilder(url)
-    //                         .PUT(HttpRequest.BodyPublishers.ofString(requestBody))
-    //                         .build()
-    //                 }
-    //                 HttpMethod.DELETE -> HttpRequest.newBuilder(url)
-    //                     .DELETE()
-    //                     .build()
-    //
-    //                 else -> TODO()
-    //             }
-    //
-    //             try {
-    //                 val httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString())
-    //                 println("Response Code: ${httpResponse.statusCode()}")
-    //                 println("Response : ${httpResponse.body()}")
-    //                 // Handle response body as needed
-    //             } catch (e: Exception) {
-    //                 e.printStackTrace()
-    //             }
-    //         }
-    //
-    //     println("Hello")
-    // }
+    val delayBetweenRequests = 10L
 
-    @Scheduled(fixedRate = 10000000)
+    @Scheduled(cron = "0 */2 * * * *") // Cron expression for every 2 minutes
+    @Transactional
     fun printHello() {
         GlobalScope.launch {
-            val res = rep.findAll()
-            res.filter { it.endpoint.contains("user_actions") }
-                .forEach { config ->
-                    println(config.toString())
+            val testConfigs = testConfigService.getAllNotStartedTests()
+            testConfigs.forEach {
+                val url = URI.create(it.endpoint)
+                val httpRequest = buildRequest(it, url)
 
-                    val url = URI.create(config.endpoint)
-                    val httpRequest = buildRequest(config, url)
-
-                    // println(processRequestBody(httpRequest.bodyPublisher().get()))
-
-                    try {
-                        val res = makeRequests(httpRequest, config.countOfTests)
-                        // val httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString())
-                        // println("Response Code: ${httpResponse.statusCode()}")
-                        println(res)
-                        // println("Response : ${httpResponse.body()}")
-                        // Handle response body as needed
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
+                try {
+                    val startTime = Instant.now()
+                    val result = calculateTestStatistics(httpRequest, it.countOfTests)
+                    testResultService.saveResult(result, startTime, it.id)
+                    testConfigService.butchUpdateWasTested(listOf(it.id))
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
-
-            println("Hello")
+            }
+            // println("Hello")
         }
     }
 
-    private suspend fun <T> retry(times: Int, initialDelay: Long = 100, factor: Double = 2.0, block: suspend () -> T): T {
+    private suspend fun <T> retry(
+        times: Int,
+        initialDelay: Long = 100,
+        factor: Double = 2.0,
+        block: suspend () -> T
+    ): T {
         var currentDelay = initialDelay
         repeat(times - 1) {
             try {
                 return block()
-            } catch (e: Exception) {
-                // e.printStackTrace() // Log the error
+            } catch (_: Exception) {
             }
             delay(currentDelay)
             currentDelay = (currentDelay * factor).toLong()
@@ -123,21 +80,9 @@ class Controller(var rep: TestConfigsRepository) {
         return block() // Last attempt
     }
 
-    private suspend fun makeRequests(httpRequest: HttpRequest, testsCount: Int) : StressTestResult = coroutineScope {
+    private suspend fun makeRequestsV2(httpRequest: HttpRequest, testsCount: Int): List<TestResult> = coroutineScope {
         val results = Collections.synchronizedList(mutableListOf<Deferred<TestResult>>())
-        val generalStartTime = Instant.now()
 
-        var r = AtomicInteger(testsCount)
-        // repeat(testsCount) {
-        //     val startTime = Instant.now()
-        //     val httpResponse = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString())
-        //     val endTime = Instant.now()
-        //     println(httpResponse.body())
-        //     results.add(TestResult(httpResponse.statusCode(), Duration.between(startTime, endTime)))
-        // }
-
-        var i = 0;
-        val delayBetweenRequests = 10L
         repeat(testsCount) {
             results.add(async(threadPool) {
                 try {
@@ -149,33 +94,54 @@ class Controller(var rep: TestConfigsRepository) {
                         val rt = Duration.between(startTime, endTime)
                         TestResult(httpResponse.statusCode(), rt.toMillis())
                     }
-                } catch (e : Exception) {
-                    println(e.message)
-                    println(++i)
+                } catch (e: Exception) {
                     TestResult(500, Duration.ZERO.toMillis())
                 }
             })
             delay(delayBetweenRequests)
         }
-
-        val completedResults = results.awaitAll()
-
-        val totalTime = Duration.between(generalStartTime,Instant.now()).toMillis() - testsCount * delayBetweenRequests
-
-        val avgTime = completedResults.sumOf { it.responseTime } / testsCount
-
-        val maxTime = completedResults.maxOfOrNull { it.responseTime } ?: 0
-        val minTime = completedResults.map { it.responseTime }
-            .filter { it > 0 }
-            .minOrNull() ?: 0
-        val failedRequests = completedResults.count { it.statusCode >= 300 }
-
-        StressTestResult(avgTime, maxTime, minTime, totalTime, failedRequests)
+        results.awaitAll()
     }
+
+    private suspend fun calculateTestStatistics(httpRequest: HttpRequest, testsCount: Int): StressTestResult =
+        coroutineScope {
+            val completedResults = makeRequestsV2(httpRequest, testsCount)
+            // repeat(testsCount) {
+            //     results.add(async(threadPool) {
+            //         try {
+            //             retry(times = 3) {
+            //                 val startTime = Instant.now()
+            //                 val httpResponse =
+            //                     httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString())
+            //                 val endTime = Instant.now()
+            //                 val rt = Duration.between(startTime, endTime)
+            //                 TestResult(httpResponse.statusCode(), rt.toMillis())
+            //             }
+            //         } catch (e : Exception) {
+            //             println(e.message)
+            //             println(++i)
+            //             TestResult(500, Duration.ZERO.toMillis())
+            //         }
+            //     })
+            //     delay(delayBetweenRequests)
+            // }
+
+            val totalTime = completedResults.sumOf { it.responseTime }
+
+            val avgTime = completedResults.sumOf { it.responseTime } / testsCount
+
+            val maxTime = completedResults.maxOfOrNull { it.responseTime } ?: 0
+            val minTime = completedResults.map { it.responseTime }
+                .filter { it > 0 }
+                .minOrNull() ?: 0
+            val failedRequests = completedResults.count { it.statusCode >= 300 }
+
+            StressTestResult(avgTime, maxTime, minTime, totalTime, failedRequests)
+        }
 
     private fun buildRequest(config: TestConfig, url: URI): HttpRequest {
         val builder = HttpRequest.newBuilder(url)
-        println(config.requestBody)
+        // println(config.requestBody)
         when (config.method) {
             HttpMethod.GET -> builder.GET()
             HttpMethod.POST -> {
@@ -237,16 +203,3 @@ class Controller(var rep: TestConfigsRepository) {
         return jsonNode
     }
 }
-
-data class TestResult(
-    val statusCode: Int,
-    val responseTime: Long,
-)
-
-data class StressTestResult(
-    val avgTime: Long,
-    val maxTime: Long,
-    val minTime: Long,
-    val totalTime: Long,
-    val failedRequests: Int
-)

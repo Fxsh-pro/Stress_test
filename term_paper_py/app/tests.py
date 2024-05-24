@@ -8,7 +8,7 @@ from flask_login import current_user, login_required
 from app import db_operation
 
 bp = Blueprint('testing', __name__, url_prefix='/testing')
-MAX_PER_PAGE = 4
+MAX_PER_PAGE = 10
 
 
 # create table test_configs
@@ -39,7 +39,7 @@ def index(cursor):
     print("HERE")
 
     base_query = ("SELECT id, endpoint, request_body, method, "
-                  "request_arguments, count_of_tests, headers, created_at, user_id "
+                  "request_arguments, count_of_tests, headers, created_at, user_id, was_tested "
                   "FROM test_configs")
     count_query = "SELECT COUNT(*) as count FROM test_configs"
 
@@ -95,12 +95,13 @@ def update(cursor, test_id):
         count_of_tests = request.form['count_of_tests']
         headers = request.form.get('headers')
         request_body = request.form.get('request_body')
+        user_id = current_user.get_id()
 
-        print((endpoint, method, request_arguments, request_body, count_of_tests, headers, test_id))
+        query = (
+            "INSERT INTO test_configs (endpoint, method, request_arguments, count_of_tests, request_body, headers, user_id) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s)")
+        cursor.execute(query, (endpoint, method, request_arguments, count_of_tests, request_body, headers, user_id))
 
-        query = ("UPDATE test_configs SET endpoint=%s, method=%s, request_arguments=%s, request_body=%s, "
-                 "count_of_tests=%s, headers=%s WHERE id=%s")
-        cursor.execute(query, (endpoint, method, request_arguments, request_body, count_of_tests, headers, test_id))
         flash('Тест успешно обновлен!', 'success')
         return redirect(url_for('testing.index'))
 
@@ -120,7 +121,7 @@ def delete(cursor, test_id):
 @bp.route('/<int:test_id>', methods=['GET'])
 @db_operation
 def view(cursor, test_id):
-    cursor.execute("SELECT * FROM test_results where id = %s", (test_id,))
+    cursor.execute("SELECT * FROM test_configs where id = %s", (test_id,))
     test = cursor.fetchone()
 
     return render_template('tests/view.html', test=test)
@@ -159,12 +160,14 @@ def results(cursor):
 
     cursor.execute(paginated_query, (MAX_PER_PAGE, offset))
     results = cursor.fetchall()
-    print(results)
     dict_results = []
     for result in results:
         result_dict = result._asdict()
         result_dict['metrics'] = json.loads(result_dict['metrics'])
         dict_results.append(result_dict)
+
+    for i in dict_results:
+        print(i)
 
     cursor.execute(count_query)
     total_results = cursor.fetchone()[0]
@@ -172,3 +175,19 @@ def results(cursor):
     pages = range(1, page_count + 1)
 
     return render_template("tests/results.html", data=dict_results, pages=pages, page=page, page_count=page_count)
+
+
+@bp.route('/<int:test_id>/details', methods=['GET'])
+@db_operation
+def view_result_details(cursor, test_id):
+    cursor.execute("SELECT * FROM test_results WHERE test_id = %s", (test_id,))
+    test_result = cursor.fetchone()
+
+    if test_result:
+        result_dict = test_result._asdict()
+        metrics = json.loads(result_dict['metrics'])
+        result_dict['metrics'] = metrics
+        return render_template('tests/result_detail.html', test_result=result_dict)
+
+    flash('Test result not found!', 'error')
+    return redirect(url_for('testing.index'))
