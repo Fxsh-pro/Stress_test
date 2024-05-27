@@ -52,7 +52,7 @@
     </table>
     {{ pagination(request.endpoint, page, page_count, pages) }}
 
-    {% if current_user.is_authenticated and current_user.can('create') %}
+    {% if current_user.is_authenticated %}
         <a href="{{ url_for('testing.create') }}" class="btn btn-primary">Добавить тест</a>
     {% endif %}
     <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">

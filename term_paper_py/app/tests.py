@@ -1,5 +1,6 @@
+import csv
 import json
-from io import BytesIO
+from io import BytesIO, StringIO
 from math import ceil
 
 from flask import Blueprint, render_template, request, send_file, Response, flash, redirect, url_for
@@ -40,12 +41,13 @@ def index(cursor):
 
     base_query = ("SELECT id, endpoint, request_body, method, "
                   "request_arguments, count_of_tests, headers, created_at, user_id, was_tested "
-                  "FROM test_configs")
-    count_query = "SELECT COUNT(*) as count FROM test_configs"
+                  "FROM test_configs " 
+                  "WHERE was_deleted = false ")
+    count_query = "SELECT COUNT(*) as count FROM test_configs WHERE was_deleted = false "
 
     if not is_admin:
-        base_query += f" WHERE user_id = {user_id}"
-        count_query += f" WHERE user_id = {user_id}"
+        base_query += f" AND user_id = {user_id}"
+        count_query += f" AND user_id = {user_id}"
 
     offset = (page - 1) * MAX_PER_PAGE
     paginated_query = base_query + " LIMIT %s OFFSET %s"
@@ -63,7 +65,6 @@ def index(cursor):
 @bp.route('/new', methods=['GET', 'POST'])
 @db_operation
 @login_required
-# @check_for_privelege('create_test')
 def create(cursor):
     if request.method == 'POST':
         endpoint = request.form['endpoint']
@@ -113,7 +114,7 @@ def update(cursor, test_id):
 @bp.route('/<int:test_id>/delete', methods=['POST'])
 @db_operation
 def delete(cursor, test_id):
-    cursor.execute("DELETE FROM test_configs WHERE id = %s", (test_id,))
+    cursor.execute("UPDATE test_configs SET was_deleted = true WHERE id = %s", (test_id,))
     flash('Тест успешно удален!', 'success')
     return redirect(url_for('testing.index'))
 
@@ -149,11 +150,11 @@ def results(cursor):
                   "tc.endpoint, tc.method, tc.user_id "
                   "FROM test_results tr "
                   "JOIN test_configs tc ON tr.test_id = tc.id")
-    count_query = "SELECT COUNT(*) as count FROM test_results tr"
+    count_query = "SELECT COUNT(*) as count FROM test_results tr "
 
     if not is_admin:
         base_query += f" WHERE tc.user_id = {user_id}"
-        count_query += f" WHERE tc.user_id = {user_id}"
+        count_query += f" JOIN test_configs tc ON tc.id = tr.test_id WHERE tc.user_id = {user_id}"
 
     offset = (page - 1) * MAX_PER_PAGE
     paginated_query = base_query + " LIMIT %s OFFSET %s"
@@ -191,3 +192,47 @@ def view_result_details(cursor, test_id):
 
     flash('Test result not found!', 'error')
     return redirect(url_for('testing.index'))
+
+
+@bp.route('/results_export.csv')
+@db_operation
+@login_required
+def results_export(cursor):
+    user_id = current_user.get_id()
+    is_admin = current_user.is_authenticated and current_user.is_admin()
+
+    base_query = ("SELECT tr.id, tr.test_id, tr.start_time, tr.end_time, tr.metrics, "
+                  "tc.endpoint, tc.method, tc.user_id "
+                  "FROM test_results tr "
+                  "JOIN test_configs tc ON tr.test_id = tc.id")
+
+    if not is_admin:
+        base_query += f" WHERE user_id = {user_id}"
+
+    cursor.execute(base_query)
+    results = cursor.fetchall()
+
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['ID', 'Test ID', 'Start Time', 'End Time', 'Metrics', 'Endpoint', 'Method', 'User ID'])
+
+    for result in results:
+        writer.writerow([
+            result.id,
+            result.test_id,
+            result.start_time,
+            result.end_time,
+            result.metrics,
+            result.endpoint,
+            result.method,
+            result.user_id
+        ])
+    output.seek(0)
+
+    csv_string = output.getvalue()
+    output_bytes = BytesIO(csv_string.encode('utf-8'))
+
+    # Reset the BytesIO object's cursor to the beginning
+    output_bytes.seek(0)
+
+    return send_file(output_bytes, as_attachment=True, mimetype='text/csv', download_name='results_export.csv')

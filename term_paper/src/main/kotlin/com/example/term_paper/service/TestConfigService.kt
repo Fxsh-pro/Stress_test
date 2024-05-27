@@ -6,7 +6,6 @@ import jakarta.transaction.Transactional
 import org.springframework.data.domain.PageRequest
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Service
-import java.util.Collections
 
 @Service
 class TestConfigService(
@@ -27,5 +26,28 @@ class TestConfigService(
         val placeholders = testIds.joinToString(separator = ",", prefix = "(", postfix = ")") { "?" }
         val sql = "UPDATE test_configs SET was_tested = 2 WHERE id IN $placeholders"
         jdbcTemplate.update(sql, *testIds.toTypedArray())
+    }
+
+    fun resetWasTestedStatusForStaleTests() {
+        val sql = """
+            UPDATE test_configs
+            SET 
+                was_tested = CASE 
+                                WHEN status_update_count < 2 THEN 0 
+                                ELSE was_tested 
+                             END,
+                status_update_count = CASE 
+                                         WHEN status_update_count < 2 THEN status_update_count + 1 
+                                         ELSE status_update_count 
+                                      END,
+                status_updated_at = CASE 
+                                       WHEN status_update_count < 2 THEN NOW() 
+                                       ELSE status_updated_at 
+                                    END
+            WHERE was_tested = 1
+              AND TIMESTAMPDIFF(HOUR, status_updated_at, NOW()) >= 3
+        """.trimIndent()
+
+        jdbcTemplate.update(sql)
     }
 }

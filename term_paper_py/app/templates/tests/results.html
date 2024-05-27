@@ -42,4 +42,7 @@
         </table>
         {{ pagination(request.endpoint, page, page_count, pages) }}
     </div>
+    <div class="mt-1">
+        <a href="{{ url_for('testing.results_export') }}" class="btn btn-primary">Экспортировать в CSV</a>
+    </div>
 {% endblock %}

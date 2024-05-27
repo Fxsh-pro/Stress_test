@@ -40,9 +40,10 @@ class Controller(
     val threadPool = Executors.newFixedThreadPool(10).asCoroutineDispatcher()
     val delayBetweenRequests = 10L
 
-    @Scheduled(cron = "0 */2 * * * *") // Cron expression for every 2 minutes
+    @Scheduled(cron = "0 */5 * * * *") // Cron expression for every 2 minutes
+    // @Scheduled(fixedRate = 100000) // Cron expression for every 2 minutes
     @Transactional
-    fun printHello() {
+    fun makeTest() {
         GlobalScope.launch {
             val testConfigs = testConfigService.getAllNotStartedTests()
             testConfigs.forEach {
@@ -202,4 +203,6 @@ class Controller(
         publisher.subscribe(subscriber)
         return jsonNode
     }
+
+
 }
