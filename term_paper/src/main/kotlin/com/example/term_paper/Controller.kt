@@ -41,11 +41,11 @@ class Controller(
     }
 
     val httpClient = HttpClient.newHttpClient()
-    val threadPool = Executors.newFixedThreadPool(6).asCoroutineDispatcher()
+    val threadPool = Executors.newFixedThreadPool(10).asCoroutineDispatcher()
     val delayBetweenRequests = 10L
 
-    @Scheduled(cron = "0 */4 * * * *") // Cron expression for every 4 minutes (is blocking)
-    // @Scheduled(fixedRate = 1000)
+    @Scheduled(cron = "0 */2 * * * *") // Cron expression for every 2 minutes (is blocking)
+    // @Scheduled(fixedRate = 100000)
     @Transactional
     fun makeTest() {
         GlobalScope.launch {
@@ -145,7 +145,7 @@ class Controller(
         config.requestArguments?.let { builder.uri(URI.create("$url?$it")) }
 
         config.headers?.let { parseHeaders(it).forEach { (name, value) -> builder.header(name, value) } }
-
+        println(config.headers)
         return builder.build()
     }
 
