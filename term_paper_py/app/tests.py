@@ -9,25 +9,8 @@ from flask_login import current_user, login_required
 from app import db_operation
 
 bp = Blueprint('testing', __name__, url_prefix='/testing')
-MAX_PER_PAGE = 10
+MAX_PER_PAGE = 7
 
-
-# create table test_configs
-# (
-#     id                int auto_increment
-#         primary key,
-#     endpoint          varchar(255)                                   not null,
-#     request_body      text                                           null,
-#     method            enum ('GET', 'POST', 'PUT', 'DELETE', 'PATCH') not null,
-#     request_arguments text                                           null,
-#     count_of_tests    int                                            not null,
-#     headers           text                                           null,
-#     user_id           int                                            not null,
-#     created_at        datetime default CURRENT_TIMESTAMP             null,
-#     constraint test_configs_ibfk_1
-#         foreign key (user_id) references users (id)
-#             on delete cascade
-# );
 
 @bp.route('/')
 @db_operation
@@ -36,12 +19,10 @@ def index(cursor):
     page = request.args.get('page', 1, type=int)
     user_id = current_user.get_id()
     is_admin = current_user.is_authenticated and current_user.is_admin()
-    print(is_admin)
-    print("HERE")
 
     base_query = ("SELECT id, endpoint, request_body, method, "
                   "request_arguments, count_of_tests, headers, created_at, user_id, was_tested "
-                  "FROM test_configs " 
+                  "FROM test_configs "
                   "WHERE was_deleted = false ")
     count_query = "SELECT COUNT(*) as count FROM test_configs WHERE was_deleted = false "
 
@@ -128,14 +109,6 @@ def view(cursor, test_id):
     return render_template('tests/view.html', test=test)
 
 
-# @bp.route('/<int:test_id>/delete', methods=['POST'])
-# @db_operation
-# def delete(cursor, test_id):
-#     cursor.execute("DELETE FROM test_configs WHERE id = %s", (test_id,))
-#     flash('Тест успешно удален!', 'success')
-#     return redirect(url_for('testing.index'))
-
-
 @bp.route('/results')
 @db_operation
 @login_required
@@ -143,8 +116,6 @@ def results(cursor):
     page = request.args.get('page', 1, type=int)
     user_id = current_user.get_id()
     is_admin = current_user.is_authenticated and current_user.is_admin()
-    print(is_admin)
-    print("HERE")
 
     base_query = ("SELECT tr.id, tr.test_id, tr.start_time, tr.end_time, tr.metrics, "
                   "tc.endpoint, tc.method, tc.user_id "
@@ -166,9 +137,6 @@ def results(cursor):
         result_dict = result._asdict()
         result_dict['metrics'] = json.loads(result_dict['metrics'])
         dict_results.append(result_dict)
-
-    for i in dict_results:
-        print(i)
 
     cursor.execute(count_query)
     total_results = cursor.fetchone()[0]
@@ -232,7 +200,6 @@ def results_export(cursor):
     csv_string = output.getvalue()
     output_bytes = BytesIO(csv_string.encode('utf-8'))
 
-    # Reset the BytesIO object's cursor to the beginning
     output_bytes.seek(0)
 
     return send_file(output_bytes, as_attachment=True, mimetype='text/csv', download_name='results_export.csv')

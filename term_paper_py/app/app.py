@@ -44,10 +44,6 @@ from users import bp as users_bp
 
 app.register_blueprint(users_bp)
 
-from user_actions import bp as user_actions_bp
-
-app.register_blueprint(user_actions_bp)
-
 from tests import bp as tests_bp
 
 app.register_blueprint(tests_bp)
@@ -67,6 +63,3 @@ def record_action(cursor):
 @app.route('/')
 def index():
     return render_template('index.html')
-
-
-

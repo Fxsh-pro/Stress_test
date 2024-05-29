@@ -47,7 +47,6 @@ def new(cursor):
                 "(%(login)s, SHA2(%(password)s, 256), %(first_name)s, %(middle_name)s, %(last_name)s, %(role_id)s)"
             )
             cursor.execute(query, user_data)
-            print(cursor.statement)
             flash('Учетная запись успешно создана', 'success')
             return redirect(url_for('users.index'))
         except connector.errors.DatabaseError:

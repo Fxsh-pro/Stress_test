@@ -4,11 +4,11 @@
 
 {% block test_content %}
     <h1>Просмотр тестов</h1>
-    <table class="table table-hover">
+    <table class="table table-hover text-center">
         <thead>
         <tr>
-            <th>Status</th>
-            <th>Endpoint</th>
+            <th>Статус</th>
+            <th>URL</th>
             <th>Тело запроса</th>
             <th>Метод</th>
             <th>Аргументы</th>
@@ -20,7 +20,7 @@
         <tbody>
         {% for test in data %}
             <tr>
-                <td style="text-align: center">
+                <td class="text-center">
                     {% if test.was_tested == 0 %}
                         <span style="color: red;">&#9679;</span> <!-- Red circle for not tested -->
                     {% elif test.was_tested == 1 %}
@@ -37,7 +37,7 @@
                 <td>{{ test.request_arguments }}</td>
                 <td>{{ test.count_of_tests }}</td>
                 <td>{{ test.headers }}</td>
-                <td style="text-align: center">
+                <td class="text-center">
                     <a class="btn btn-primary" href="{{ url_for('testing.update', test_id=test.id) }}">Edit</a>
                     <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal"
                             data-test-id="{{ test.id }}">Delete
