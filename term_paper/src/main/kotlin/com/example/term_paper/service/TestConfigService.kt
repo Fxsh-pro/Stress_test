@@ -9,14 +9,14 @@ import org.springframework.stereotype.Service
 
 @Service
 class TestConfigService(
-    val testConfigsRepository: TestConfigsRepository,
-    val jdbcTemplate: JdbcTemplate
+    private val testConfigsRepository: TestConfigsRepository,
+    private val jdbcTemplate: JdbcTemplate
 ) {
-    val limit = 5
+    private val LIMIT = 1
 
     @Transactional
     fun getAllNotStartedTests(): List<TestConfig> {
-        val pageable = PageRequest.of(0, limit)
+        val pageable = PageRequest.of(0, LIMIT)
         val tests = testConfigsRepository.findAllNotTested(pageable)
         tests.forEach { it.wasTested = 1 }
         return tests

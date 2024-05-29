@@ -17,6 +17,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import java.net.URI
@@ -35,31 +36,35 @@ class Controller(
     var testConfigService: TestConfigService,
     var testResultService: TestResultService
 ) {
+    companion object {
+        private val LOG = LoggerFactory.getLogger(HealthChecker::class.java)
+    }
 
     val httpClient = HttpClient.newHttpClient()
-    val threadPool = Executors.newFixedThreadPool(10).asCoroutineDispatcher()
+    val threadPool = Executors.newFixedThreadPool(6).asCoroutineDispatcher()
     val delayBetweenRequests = 10L
 
-    @Scheduled(cron = "0 */5 * * * *") // Cron expression for every 2 minutes
-    // @Scheduled(fixedRate = 100000) // Cron expression for every 2 minutes
+    @Scheduled(cron = "0 */4 * * * *") // Cron expression for every 4 minutes (is blocking)
+    // @Scheduled(fixedRate = 1000)
     @Transactional
     fun makeTest() {
         GlobalScope.launch {
             val testConfigs = testConfigService.getAllNotStartedTests()
+            LOG.info("found ${testConfigs.size} test : $testConfigs")
             testConfigs.forEach {
                 val url = URI.create(it.endpoint)
                 val httpRequest = buildRequest(it, url)
-
                 try {
                     val startTime = Instant.now()
                     val result = calculateTestStatistics(httpRequest, it.countOfTests)
+                    LOG.info("Statistic is calculated for  ${it.id} : $result")
                     testResultService.saveResult(result, startTime, it.id)
                     testConfigService.butchUpdateWasTested(listOf(it.id))
+                    LOG.info("Test ${it.id} is done")
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
             }
-            // println("Hello")
         }
     }
 
@@ -107,30 +112,8 @@ class Controller(
     private suspend fun calculateTestStatistics(httpRequest: HttpRequest, testsCount: Int): StressTestResult =
         coroutineScope {
             val completedResults = makeRequestsV2(httpRequest, testsCount)
-            // repeat(testsCount) {
-            //     results.add(async(threadPool) {
-            //         try {
-            //             retry(times = 3) {
-            //                 val startTime = Instant.now()
-            //                 val httpResponse =
-            //                     httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString())
-            //                 val endTime = Instant.now()
-            //                 val rt = Duration.between(startTime, endTime)
-            //                 TestResult(httpResponse.statusCode(), rt.toMillis())
-            //             }
-            //         } catch (e : Exception) {
-            //             println(e.message)
-            //             println(++i)
-            //             TestResult(500, Duration.ZERO.toMillis())
-            //         }
-            //     })
-            //     delay(delayBetweenRequests)
-            // }
-
             val totalTime = completedResults.sumOf { it.responseTime }
-
             val avgTime = completedResults.sumOf { it.responseTime } / testsCount
-
             val maxTime = completedResults.maxOfOrNull { it.responseTime } ?: 0
             val minTime = completedResults.map { it.responseTime }
                 .filter { it > 0 }
@@ -203,6 +186,4 @@ class Controller(
         publisher.subscribe(subscriber)
         return jsonNode
     }
-
-
 }

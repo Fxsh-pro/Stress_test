@@ -19,5 +19,4 @@ class HealthChecker(val testConfigService: TestConfigService) {
         LOG.info("Started heal check")
         testConfigService.resetWasTestedStatusForStaleTests()
     }
-
 }
