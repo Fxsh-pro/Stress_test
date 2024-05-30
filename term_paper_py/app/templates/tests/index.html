@@ -4,76 +4,82 @@
 
 {% block test_content %}
     <h1>Просмотр тестов</h1>
-    <table class="table table-hover text-center">
-        <thead>
-        <tr>
-            <th>Статус</th>
-            <th>URL</th>
-            <th>Тело запроса</th>
-            <th>Метод</th>
-            <th>Аргументы</th>
-            <th>Кол-во тестов</th>
-            <th>Заголовки</th>
-            <th>Действия</th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for test in data %}
+        <table class="table table-hover text-center">
+            <thead>
             <tr>
-                <td class="text-center">
-                    {% if test.was_tested == 0 %}
-                        <span style="color: red;">&#9679;</span> <!-- Red circle for not tested -->
-                    {% elif test.was_tested == 1 %}
-                        <span style="color: yellow;">&#9679;</span> <!-- Yellow circle for partially tested -->
-                    {% elif test.was_tested == 2 %}
-                        <span style="color: green;">&#9679;</span> <!-- Green circle for fully tested -->
-                    {% else %}
-                        <span style="color: black;">&#9679;</span> <!-- Black circle for other cases -->
-                    {% endif %}
-                </td>
-                <td>{{ test.endpoint }}</td>
-                <td>{{ test.request_body }}</td>
-                <td>{{ test.method }}</td>
-                <td>{{ test.request_arguments }}</td>
-                <td>{{ test.count_of_tests }}</td>
-                <td>{{ test.headers }}</td>
-                <td class="text-center">
-                    <a class="btn btn-primary" href="{{ url_for('testing.update', test_id=test.id) }}">Edit</a>
-                    <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal"
-                            data-test-id="{{ test.id }}">Delete
-                    </button>
-                    {% if test.was_tested == 2 %}
-                        <a class="btn btn-primary" href="{{ url_for('testing.view_result_details', test_id=test.id) }}">Result</a>
-                    {% endif %}
-                </td>
+                <th>Статус</th>
+                <th>URL</th>
+                <th>Тело запроса</th>
+                <th>Метод</th>
+                <th>Аргументы</th>
+                <th>Кол-во тестов</th>
+                <th>Заголовки</th>
+                <th>Действия</th>
             </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {{ pagination(request.endpoint, page, page_count, pages) }}
+            </thead>
+            <tbody>
+            {% for test in data %}
+                <tr>
+                    <td class="text-center">
+                        {% if test.was_tested == 0 %}
+                            <span style="color: red;">&#9679;</span> <!-- Red circle for not tested -->
+                        {% elif test.was_tested == 1 %}
+                            <span style="color: yellow;">&#9679;</span> <!-- Yellow circle for partially tested -->
+                        {% elif test.was_tested == 2 %}
+                            <span style="color: green;">&#9679;</span> <!-- Green circle for fully tested -->
+                        {% else %}
+                            <span style="color: black;">&#9679;</span> <!-- Black circle for other cases -->
+                        {% endif %}
+                    </td>
+                    <td>{{ test.endpoint|truncate(30, True) }}</td>
+                    <td>{{ test.request_body|truncate(30, True) }}</td>
+                    <td>{{ test.method }}</td>
+                    <td>{{ test.request_arguments|truncate(30, True) }}</td>
+                    <td>{{ test.count_of_tests }}</td>
+                    <td>{{ test.headers|truncate(30, True) }}</td>
+                    <td class="text-center">
+                        <a class="btn btn-primary" href="{{ url_for('testing.update', test_id=test.id) }}">Edit</a>
+                        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal"
+                                data-test-id="{{ test.id }}">Delete
+                        </button>
+                        <a class="btn btn-primary"
+                           href="{{ url_for('testing.view', test_id=test.id) }}">View
+                        </a>
+                        {% if test.was_tested == 2 %}
+                            <a class="btn btn-primary"
+                               href="{{ url_for('testing.view_result_details', test_id=test.id) }}">Result</a>
+                        {% endif %}
+                    </td>
 
-    {% if current_user.is_authenticated %}
-        <a href="{{ url_for('testing.create') }}" class="btn btn-primary">Добавить тест</a>
-    {% endif %}
-    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="deleteModalLabel">Удаление теста</h1>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    Вы уверены, что хотите удалить данный тест?
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отменить</button>
-                    <form method="post" id="deleteModalForm">
-                        <button type="submit" class="btn btn-danger">Удалить</button>
-                    </form>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {{ pagination(request.endpoint, page, page_count, pages) }}
+
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('testing.create') }}" class="btn btn-primary">Добавить тест</a>
+        {% endif %}
+        <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="deleteModalLabel">Удаление теста</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        Вы уверены, что хотите удалить данный тест?
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отменить</button>
+                        <form method="post" id="deleteModalForm">
+                            <button type="submit" class="btn btn-danger">Удалить</button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+
 {% endblock %}
 {% block scripts %}
     <script src="{{ url_for('static', filename='test_delete_modal.js') }}"></script>

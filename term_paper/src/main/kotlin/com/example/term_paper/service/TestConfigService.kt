@@ -12,7 +12,7 @@ class TestConfigService(
     private val testConfigsRepository: TestConfigsRepository,
     private val jdbcTemplate: JdbcTemplate
 ) {
-    private val LIMIT = 1
+    private val LIMIT = 3
 
     @Transactional
     fun getAllNotStartedTests(): List<TestConfig> {
