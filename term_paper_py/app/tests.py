@@ -9,7 +9,7 @@ from flask_login import current_user, login_required
 from app import db_operation
 
 bp = Blueprint('testing', __name__, url_prefix='/testing')
-MAX_PER_PAGE = 15
+MAX_PER_PAGE = 7
 
 
 @bp.route('/')
