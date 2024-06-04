@@ -45,7 +45,6 @@ class Controller(
     val delayBetweenRequests = 10L
 
     @Scheduled(cron = "0 */2 * * * *") // Cron expression for every 2 minutes (is blocking)
-    // @Scheduled(fixedRate = 100000)
     @Transactional
     fun makeTest() {
         GlobalScope.launch {

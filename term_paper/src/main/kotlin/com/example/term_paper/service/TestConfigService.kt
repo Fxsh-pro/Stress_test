@@ -33,6 +33,7 @@ class TestConfigService(
             UPDATE test_configs
             SET 
                 was_tested = CASE 
+                                WHEN status_update_count > 2 THEN 2
                                 WHEN status_update_count < 2 THEN 0 
                                 ELSE was_tested 
                              END,
